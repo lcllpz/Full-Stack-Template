@@ -1,0 +1,90 @@
+# 依赖目录
+**/node_modules/
+# .pnpm-store/
+
+# 构建产物
+dist/
+build/
+dist-ssr/
+.vite/
+.next/
+.nuxt/
+.output/
+.turbo/
+.cache/
+
+# 覆盖率和测试产物
+# coverage/
+# .nyc_output/
+# playwright-report/
+# test-results/
+
+# 日志文件
+# logs/
+# *.log
+# npm-debug.log*
+# yarn-debug.log*
+# yarn-error.log*
+# pnpm-debug.log*
+# lerna-debug.log*
+
+# 环境变量文件
+# .env
+# .env.*
+# !.env.example
+# !.env.*.example
+
+# 运行时和临时文件
+# .temp/
+# .tmp/
+# tmp/
+# pids/
+# *.pid
+# *.seed
+# *.pid.lock
+# *.local
+
+# Node.js 诊断报告
+# report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# macOS 和编辑器文件
+# .DS_Store
+# .idea/
+# .vscode/*
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+# *.suo
+# *.ntvs*
+# *.njsproj
+# *.sln
+# *.sw?
+
+# 应用级产物统一在根目录忽略，后续新增 app 可以自动继承同一策略。
+# apps/*/dist/
+# apps/*/build/
+# apps/*/coverage/
+
+# 公共包产物
+# packages/*/dist/
+# packages/*/build/
+# packages/*/coverage/
+# packages/*/*/dist/
+# packages/*/*/build/
+# packages/*/*/coverage/
+
+# 后端服务产物
+# server/dist/
+# server/build/
+# server/coverage/
+
+# 后端本地数据导入文件体积通常较大，不提交到 Git。
+# server/data/
+
+# 数据库产物
+# server/generated/prisma/
+# server/libs/shared/src/generated/prisma/
+
+# docker
+# .devcontainer/postgresql_data/
