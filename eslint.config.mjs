@@ -45,18 +45,16 @@ const tailwindCanonicalPatterns = [
   },
 ];
 
-const tailwindCanonicalSyntaxRules = tailwindCanonicalPatterns.flatMap(
-  ({ pattern, message }) => [
-    {
-      selector: `Literal[value=/${pattern}/]`,
-      message,
-    },
-    {
-      selector: `TemplateElement[value.raw=/${pattern}/]`,
-      message,
-    },
-  ],
-);
+const tailwindCanonicalSyntaxRules = tailwindCanonicalPatterns.flatMap(({ pattern, message }) => [
+  {
+    selector: `Literal[value=/${pattern}/]`,
+    message,
+  },
+  {
+    selector: `TemplateElement[value.raw=/${pattern}/]`,
+    message,
+  },
+]);
 
 const backTypeAwareParserOptions = {
   projectService: true,
@@ -87,9 +85,7 @@ function scopeToFront(configs) {
       return [
         {
           ignores: entry.ignores.map((pattern) =>
-            pattern.startsWith('!')
-              ? `!apps/front/${pattern.slice(1)}`
-              : `apps/front/${pattern}`,
+            pattern.startsWith('!') ? `!apps/front/${pattern.slice(1)}` : `apps/front/${pattern}`,
           ),
         },
       ];
