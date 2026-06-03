@@ -1,7 +1,8 @@
 # 依赖目录
 **/node_modules/
 # .pnpm-store/
-
+# 其它项目目录
+**/otherProjects/
 # 构建产物
 dist/
 build/
