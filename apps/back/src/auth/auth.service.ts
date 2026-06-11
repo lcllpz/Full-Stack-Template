@@ -1,0 +1,145 @@
+import { HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
+
+import { Session } from '@/session/entities/session.entity';
+import { SessionService } from '@/session/session.service';
+import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
+import { User } from '@/user/entities/user.entity';
+import { UserService } from '@/user/user.service';
+
+import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly jwtService: JwtService) {}
+  @Inject(UserService)
+  private readonly userService: UserService;
+
+  @Inject(SessionService)
+  private readonly sessionService: SessionService;
+
+  async register(registerDto: AuthRegisterLoginDto) {
+    await this.userService.create(registerDto);
+    return {
+      status: HttpStatus.CREATED,
+      message: '注册成功',
+    };
+  }
+
+  async login(loginDto: UserRegistrationFieldsDto) {
+    const user = await this.userService.findByEmail(loginDto.email);
+    if (!user) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          email: '账号不存在',
+        },
+      });
+    }
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          password: '账号密码错误',
+        },
+      });
+    }
+
+    const session = await this.sessionService.createForUser(user.id);
+    const { token, refreshToken, tokenExpires } = await this.getTokensData({
+      userId: user.id,
+      sessionId: session.id,
+      hash: session.hash,
+    });
+
+    return {
+      user,
+      token,
+      refreshToken,
+      tokenExpires,
+    };
+  }
+
+  private async getTokensData(data: {
+    userId: User['id'];
+    sessionId: Session['id'];
+    hash: Session['hash'];
+    // role: Role['name'],
+  }) {
+    const payload = {
+      userId: data.userId,
+      // role: data.role,
+      sessionId: data.sessionId,
+    };
+
+    const tokenExpires = '15m';
+    const refreshTokenExpires = '1h';
+    const [token, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        expiresIn: tokenExpires,
+        secret: 'secret',
+      }),
+      this.jwtService.signAsync(
+        {
+          ...payload,
+          hash: data.hash,
+        },
+        {
+          expiresIn: refreshTokenExpires,
+          secret: 'secret',
+        },
+      ),
+    ]);
+    return {
+      token,
+      refreshToken,
+      tokenExpires,
+    };
+  }
+
+  async validateRefreshToken(data: { sessionId: Session['id']; hash: Session['hash'] }) {
+    const session = await this.sessionService.findValidById(data.sessionId);
+    if (!session || session.deletedAt) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          sessionId: '会话已过期',
+        },
+      });
+    }
+    if (session.hash !== data.hash) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          hash: '会话哈希不匹配',
+        },
+      });
+    }
+  }
+
+  async refreshToken(data: { sessionId: Session['id']; userId: User['id'] }) {
+    const hash = randomBytes(32).toString('hex');
+    await this.sessionService.updateHash(data.sessionId, hash);
+    const { token, refreshToken, tokenExpires } = await this.getTokensData({
+      userId: data.userId,
+      sessionId: data.sessionId,
+      hash,
+    });
+    return {
+      token,
+      refreshToken,
+      tokenExpires,
+    };
+  }
+
+  async logout(sessionId: Session['id']) {
+    await this.sessionService.invalidate(sessionId);
+    return {
+      status: HttpStatus.OK,
+      message: '退出成功',
+    };
+  }
+}

@@ -22,7 +22,28 @@ export type RequestOptions = Omit<RequestInit, 'body'> & {
   params?: Record<string, string | number | boolean | undefined | null>;
   /** Next.js 缓存控制：next: { revalidate, tags } */
   next?: NextFetchOptions;
+  /**
+   * 显式传入 token，会写入 Authorization: Bearer。
+   * 主要给 Server Component / SSR 预取使用：
+   *   const token = (await cookies()).get('token')?.value;
+   *   usersApi.list(query, { token });
+   * 客户端可不传，会自动从浏览器 cookie 读取。
+   */
+  token?: string;
 };
+
+/** Cookie 中存放 token 的字段名（与后端 / 登录写入保持一致） */
+const TOKEN_COOKIE_KEY = 'token';
+
+/**
+ * 仅浏览器环境：从 document.cookie 读取 token。
+ * 注意：httpOnly cookie 无法被 JS 读取（此时返回 undefined，但同源请求浏览器会自动携带）。
+ */
+function getClientToken(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.split('; ').find((c) => c.startsWith(`${TOKEN_COOKIE_KEY}=`));
+  return match ? decodeURIComponent(match.slice(TOKEN_COOKIE_KEY.length + 1)) : undefined;
+}
 
 /** 统一的请求错误，便于上层按 status 做分支处理（如 401 跳登录） */
 export class RequestError extends Error {
@@ -60,7 +81,7 @@ function isPlainBody(body: unknown): boolean {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, params, headers, next, ...rest } = options;
+  const { body, params, headers, next, token, ...rest } = options;
 
   const isJson = isPlainBody(body);
   const finalHeaders = new Headers(headers);
@@ -68,9 +89,18 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     finalHeaders.set('Content-Type', 'application/json');
   }
 
+  // 「拦截器」思路：优先用显式传入的 token（服务端），否则尝试从浏览器 cookie 读取。
+  // 已手动设置 Authorization 时不覆盖。
+  const authToken = token ?? getClientToken();
+  if (authToken && !finalHeaders.has('Authorization')) {
+    finalHeaders.set('Authorization', `Bearer ${authToken}`);
+  }
+
   const res = await fetch(buildUrl(path, params), {
     ...rest,
     headers: finalHeaders,
+    // 同源 httpOnly cookie 自动携带；跨域需后端配置 CORS（Access-Control-Allow-Credentials）
+    credentials: rest.credentials ?? 'include',
     body: isJson ? JSON.stringify(body) : (body as BodyInit | undefined),
     // Next.js 扩展：仅服务端取数时生效，客户端无副作用
     ...(next ? { next } : {}),

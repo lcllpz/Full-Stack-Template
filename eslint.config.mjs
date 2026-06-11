@@ -131,7 +131,10 @@ export default defineConfig([
       globals: globals.node,
       parserOptions: backTypeAwareParserOptions,
     },
-    rules: importSortRules,
+    rules: {
+      ...importSortRules,
+      ...backTestRelaxedRules,
+    },
   },
   {
     files: backTestFiles,
