@@ -1,8 +1,11 @@
 import { HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
+import { authConfigKey } from '@/config/auth/config';
+import { AllConfigType } from '@/config/config.type';
 import { Session } from '@/session/entities/session.entity';
 import { SessionService } from '@/session/session.service';
 import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
@@ -10,7 +13,6 @@ import { User } from '@/user/entities/user.entity';
 import { UserService } from '@/user/user.service';
 
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
-
 @Injectable()
 export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
@@ -19,6 +21,9 @@ export class AuthService {
 
   @Inject(SessionService)
   private readonly sessionService: SessionService;
+
+  @Inject(ConfigService)
+  private readonly configService: ConfigService<AllConfigType>;
 
   async register(registerDto: AuthRegisterLoginDto) {
     await this.userService.create(registerDto);
@@ -75,12 +80,16 @@ export class AuthService {
       sessionId: data.sessionId,
     };
 
-    const tokenExpires = '15m';
-    const refreshTokenExpires = '1h';
+    const { JWT_SECRET, JWT_REFRESH_SECRET, JWT_EXPIRES_IN, JWT_REFRESH_EXPIRES_IN } =
+      this.configService.getOrThrow(authConfigKey, {
+        infer: true,
+      });
+    const tokenExpires = JWT_EXPIRES_IN;
+    const refreshTokenExpires = JWT_REFRESH_EXPIRES_IN;
     const [token, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         expiresIn: tokenExpires,
-        secret: 'secret',
+        secret: JWT_SECRET,
       }),
       this.jwtService.signAsync(
         {
@@ -89,7 +98,7 @@ export class AuthService {
         },
         {
           expiresIn: refreshTokenExpires,
-          secret: 'secret',
+          secret: JWT_REFRESH_SECRET,
         },
       ),
     ]);

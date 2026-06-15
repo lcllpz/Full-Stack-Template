@@ -14,3 +14,10 @@ pnpm add -D @types/bcryptjs
 jwt
 pnpm add @nestjs/jwt passport-jwt
 pnpm add -D @types/passport-jwt
+
+环境变量配置
+pnpm add --save @nestjs/config
+
+占用端口
+netstat -ano | findstr :4000
+taskkill /PID <上面看到的PID> /F

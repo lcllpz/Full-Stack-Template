@@ -10,16 +10,31 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // 注册
+  // 1. 验证用户是否被创建： 邮箱是否被注册
+  // 2. 创建用户：password 加盐加密存储到数据库
+  // 3. 返回成功
   @Post('register')
   register(@Body() registerDto: AuthRegisterLoginDto) {
     return this.authService.register(registerDto);
   }
 
+  // 登录
+  // 1. 验证用户是否存在： 邮箱是否被注册
+  // 2. 验证用户密码是否正确： 密码是否与数据库中的密码匹配
+  // 3. 创建 session： 生成 sessionId 和 hash
+  // 4. 生成 token 和 refreshToken
+  // 4. 返回 token 和 refreshToken
   @Post('login')
   login(@Body() loginDto: UserRegistrationFieldsDto) {
     return this.authService.login(loginDto);
   }
 
+  // 刷新 token
+  // 1. 验证会话是否存在: sessionId、deletedAt
+  // 2. 验证会话哈希是否匹配: hash
+  // 3. 更新session的hash并生成新的 token 和 refreshToken
+  // 4. 返回新的 token 和 refreshToken
   @Post('refresh')
   @UseGuards(AuthGuard('jwtRefresh'))
   refresh(@Request() request) {

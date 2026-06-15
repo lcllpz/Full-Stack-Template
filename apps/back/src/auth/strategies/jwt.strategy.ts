@@ -1,31 +1,28 @@
-import { HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
+import { authConfigKey } from '@/config/auth/config';
+import { AllConfigType } from '@/config/config.type';
 import { SessionService } from '@/session/session.service';
 
 // 自定义 JWT 策略
-// 用于验证 JWT 令牌
-// 在请求头中提取 JWT 令牌
-// 忽略过期时间
-// 使用 secret 密钥验证 JWT 令牌
-// 返回用户信息
+//  JWT 签名与过期校验
 // 守卫：用于保护路由，只有通过 JWT 验证的用户才能访问该路由
 // 策略：用于验证 JWT 令牌
-// 策略：用于保护路由，只有通过 JWT 验证的用户才能访问该路由
-// 策略：用于验证 JWT 令牌
-
-//  JWT 签名与过期校验
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  @Inject(SessionService)
-  private sessionService: SessionService;
-
-  constructor() {
+  constructor(
+    configService: ConfigService<AllConfigType>,
+    private readonly sessionService: SessionService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false, // 过期 token 会被拒绝
-      secretOrKey: 'secret',
+      secretOrKey: configService.getOrThrow(authConfigKey, {
+        infer: true,
+      }).JWT_SECRET,
     });
   }
   //   请求带 Authorization: Bearer <token>

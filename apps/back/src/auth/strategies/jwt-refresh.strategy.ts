@@ -1,19 +1,25 @@
-import { HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { HttpStatus, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+
+import { authConfigKey } from '@/config/auth/config';
+import { AllConfigType } from '@/config/config.type';
 
 import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwtRefresh') {
-  @Inject(AuthService)
-  private authService: AuthService;
-
-  constructor() {
+  constructor(
+    configService: ConfigService<AllConfigType>,
+    private readonly authService: AuthService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'secret',
+      secretOrKey: configService.getOrThrow(authConfigKey, {
+        infer: true,
+      }).JWT_REFRESH_SECRET,
     });
   }
   async validate(payload: { hash: string; sessionId: string }) {
