@@ -18,10 +18,6 @@ export class Role {
   @Column({ type: 'varchar', length: 64 })
   name: string;
 
-  /** 角色标识，如 admin / user，代码里用，唯一 */
-  @Column({ type: 'varchar', length: 32, unique: true })
-  code: string;
-
   /** 角色描述 */
   @Column({ type: 'varchar', length: 255, nullable: true })
   description: string | null;
