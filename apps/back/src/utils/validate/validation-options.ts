@@ -5,6 +5,7 @@ import {
   ValidationPipeOptions,
 } from '@nestjs/common';
 
+// 生成错误信息
 function generateErrors(errors: ValidationError[]) {
   return errors.reduce(
     (accumulator, currentValue) => ({
@@ -18,6 +19,7 @@ function generateErrors(errors: ValidationError[]) {
   );
 }
 
+// 错误处理与统一响应： 验证选项
 const validationOptions: ValidationPipeOptions = {
   whitelist: true, // 去掉 DTO 里没有的字段
   transform: true, // 自动转成 DTO 实例

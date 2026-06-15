@@ -26,7 +26,7 @@ export const appConfigKey = 'app';
 export const appConfig = registerAs<AppConfig>(appConfigKey, () => {
   validateConfig(process.env, EnvironmentVariablesValidator);
   return {
-    nodeEnv: process.env.NODE_ENV || Environment.Development,
+    nodeEnv: (process.env.NODE_ENV as Environment) || Environment.Development,
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   };
 });
