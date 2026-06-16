@@ -9,4 +9,7 @@ export type AuthConfigType = {
 
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: JwtExpiresIn;
+
+  /** bcrypt 加密轮数，值越大越安全但越慢，推荐 10~12 */
+  BCRYPT_SALT_ROUNDS: number;
 };

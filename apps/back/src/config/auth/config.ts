@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { Environment } from '@/config/app/config.type';
 import { validateConfig } from '@/utils/config/validate';
@@ -22,6 +22,12 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   JWT_REFRESH_EXPIRES_IN: string;
+
+  @IsInt()
+  @Min(8)
+  @Max(14)
+  @IsOptional()
+  BCRYPT_SALT_ROUNDS: number;
 }
 
 // 配置项的唯一标识符
@@ -51,5 +57,9 @@ export const authConfig = registerAs<AuthConfigType>(authConfigKey, () => {
     JWT_REFRESH_SECRET: jwtRefreshSecret || 'development',
     JWT_REFRESH_EXPIRES_IN: (process.env.JWT_REFRESH_EXPIRES_IN ||
       '7d') as AuthConfigType['JWT_REFRESH_EXPIRES_IN'],
+
+    BCRYPT_SALT_ROUNDS: process.env.BCRYPT_SALT_ROUNDS
+      ? parseInt(process.env.BCRYPT_SALT_ROUNDS, 10)
+      : 10,
   };
 });

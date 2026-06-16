@@ -39,7 +39,7 @@ export class AuthService {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: {
-          email: '账号不存在',
+          email: '账号密码错误',
         },
       });
     }
@@ -149,6 +149,23 @@ export class AuthService {
     return {
       status: HttpStatus.OK,
       message: '退出成功',
+    };
+  }
+
+  /** GET /auth/me —— 返回当前用户信息 + 权限码 + 可见菜单树 */
+  async getMe(userId: string) {
+    const [user, permissions, menus, roles] = await Promise.all([
+      this.userService.findOne(userId),
+      this.userService.getPermissionCodes(userId),
+      this.userService.getAccessibleMenuTree(userId),
+      this.userService.getRoleNames(userId),
+    ]);
+
+    return {
+      user,
+      roles,
+      permissions,
+      menus,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
@@ -47,12 +47,17 @@ export class AuthController {
   }
 
   // 退出登录
-  // 1. 软删除 session、  refreshToken无法获取新token
-  // 2. 返回成功
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   logout(@Request() request: Request & { user: { sessionId: string } }) {
     const sessionId = request.user.sessionId;
     return this.authService.logout(sessionId);
+  }
+
+  // 获取当前用户信息 + 权限码 + 可见菜单树
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  getMe(@Request() request: Request & { user: { userId: string } }) {
+    return this.authService.getMe(request.user.userId);
   }
 }

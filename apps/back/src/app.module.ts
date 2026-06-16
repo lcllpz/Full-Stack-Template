@@ -8,17 +8,18 @@ import { Environment } from './config/app/config.type';
 import { authConfig } from './config/auth/config';
 import { AllConfigType } from './config/config.type';
 import { dataBaseConfig, dataBaseConfigKey } from './config/dataBase/config';
+import { seedsConfig } from './config/seeds';
+import { MenuModule } from './menu/menu.module';
 import { RoleModule } from './role/role.module';
+import { DatabaseModule } from './seeds/database.module';
 import { UserModule } from './user/user.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // 全局可用，其他模块无需再 import
       envFilePath: [`.env.${process.env.NODE_ENV ?? Environment.Development}`, '.env'],
-      load: [appConfig, authConfig, dataBaseConfig],
+      load: [appConfig, authConfig, dataBaseConfig, seedsConfig],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -47,8 +48,8 @@ import { AppService } from './app.service';
     UserModule,
     RoleModule,
     AuthModule,
+    MenuModule,
+    DatabaseModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

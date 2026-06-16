@@ -4,10 +4,13 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinTable,
   ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { Menu } from '@/menu/entities/menu.entity';
 
 @Entity('roles')
 export class Role {
@@ -26,8 +29,18 @@ export class Role {
   @Column({ default: false })
   isSystem: boolean;
 
+  /** 拥有此角色的用户 */
   @ManyToMany(() => User, (user) => user.roles)
   users: User[];
+
+  /**
+   * 角色拥有的菜单/按钮权限
+   * - DIRECTORY/MENU 类型：控制菜单可见性
+   * - BUTTON 类型：同时作为接口级权限（PermissionsGuard 通过 menu.code 校验）
+   */
+  @ManyToMany(() => Menu, (menu) => menu.roles)
+  @JoinTable({ name: 'role_menus' })
+  menus: Menu[];
 
   @CreateDateColumn()
   createdAt: Date;
