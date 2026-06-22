@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
 import { Menu, MenuType } from '@/menu/entities/menu.entity';
+import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 
 import { CreateRoleDto } from './dto/create-role.dto';
 import { DeleteRoleDto } from './dto/delete-role.dto';
@@ -18,6 +19,8 @@ export class RoleService {
 
   @InjectRepository(Menu)
   private readonly menuRepository: Repository<Menu>;
+
+  constructor(private readonly permissionMenuCacheService: PermissionMenuCacheService) {}
 
   // ─── 创建 ────────────────────────────────────────────────
 
@@ -102,13 +105,23 @@ export class RoleService {
       role.menus = await this.resolveMenusWithDescendants(dto.menuIds);
     }
 
-    return this.roleRepository.save(role);
+    const saved = await this.roleRepository.save(role);
+
+    if (dto.menuIds !== undefined) {
+      await this.permissionMenuCacheService.invalidateByRoleId(id);
+    }
+
+    return saved;
   }
 
   // ─── 删除 ────────────────────────────────────────────────
 
   async remove(dto: DeleteRoleDto) {
     if (!dto.ids?.length) return { deleted: 0 };
+
+    await Promise.all(
+      dto.ids.map((roleId) => this.permissionMenuCacheService.invalidateByRoleId(roleId)),
+    );
     await this.roleRepository.softDelete({ id: In(dto.ids) });
     return { deleted: dto.ids.length };
   }

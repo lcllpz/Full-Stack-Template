@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MenuModule } from '@/menu/menu.module';
 import { PermissionModule } from '@/permission/permission.module';
+import { PermissionMenuCacheModule } from '@/redis/permissionMenuCache';
 import { RoleModule } from '@/role/role.module';
 
 import { User } from './entities/user.entity';
@@ -13,6 +14,7 @@ import { UserService } from './user.service';
   imports: [
     TypeOrmModule.forFeature([User]),
     MenuModule,
+    PermissionMenuCacheModule,
     forwardRef(() => RoleModule),
     forwardRef(() => PermissionModule),
   ],

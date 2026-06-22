@@ -1,6 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
+import { AllConfigType } from '@/config/config.type';
+import { seedsConfigKey } from '@/config/seeds/config';
 import { UserService } from '@/user/user.service';
 
 import { PERMISSIONS_KEY } from './permissions.decorator';
@@ -10,6 +13,7 @@ export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly userService: UserService,
+    private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,7 +33,10 @@ export class PermissionsGuard implements CanActivate {
     const info = await this.userService.findOne(user.userId);
 
     const roleNames: string[] = (info.roles ?? []).map((r: { name: string }) => r.name);
-    if (roleNames.includes('super_admin')) return true;
+    const { SUPER_ADMIN_ROLE_NAME } = this.configService.getOrThrow(seedsConfigKey, {
+      infer: true,
+    });
+    if (roleNames.includes(SUPER_ADMIN_ROLE_NAME)) return true;
 
     // 查询用户所有 BUTTON 类型菜单的 code 集合
     const userCodes = await this.userService.getPermissionCodes(user.userId);

@@ -2,6 +2,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
+import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
+
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { ACTION_LABELS, CreateModuleDto, STANDARD_ACTIONS } from './dto/create-module.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
@@ -15,6 +17,7 @@ export class MenuService {
   constructor(
     @InjectRepository(Menu)
     private readonly menuRepo: Repository<Menu>,
+    private readonly permissionMenuCacheService: PermissionMenuCacheService,
   ) {}
 
   // ─── 单条创建 ────────────────────────────────────────────────
@@ -159,7 +162,9 @@ export class MenuService {
       if (exists) throw new ConflictException(`权限码 ${dto.code} 已存在`);
     }
     Object.assign(menu, dto);
-    return this.menuRepo.save(menu);
+    const saved = await this.menuRepo.save(menu);
+    await this.permissionMenuCacheService.invalidateByMenuId(id);
+    return saved;
   }
 
   /**
@@ -168,6 +173,9 @@ export class MenuService {
    */
   async updateSort(items: { id: string; sort: number }[]): Promise<void> {
     await Promise.all(items.map(({ id, sort }) => this.menuRepo.update(id, { sort })));
+    await Promise.all(
+      items.map(({ id }) => this.permissionMenuCacheService.invalidateByMenuId(id)),
+    );
   }
 
   // ─── 删除 ────────────────────────────────────────────────────
@@ -175,6 +183,7 @@ export class MenuService {
   async remove(id: string): Promise<void> {
     const menu = await this.findOne(id);
     if (menu.isSystem) throw new ConflictException('系统内置菜单不允许删除');
+    await this.permissionMenuCacheService.invalidateByMenuId(id);
     await this.menuRepo.softRemove(menu);
   }
 

@@ -8,8 +8,10 @@ import { Environment } from './config/app/config.type';
 import { authConfig } from './config/auth/config';
 import { AllConfigType } from './config/config.type';
 import { dataBaseConfig, dataBaseConfigKey } from './config/dataBase/config';
+import { redisConfig } from './config/redis/config';
 import { seedsConfig } from './config/seeds';
 import { MenuModule } from './menu/menu.module';
+import { RedisModule } from './redis/redis.module';
 import { RoleModule } from './role/role.module';
 import { DatabaseModule } from './seeds/database.module';
 import { UserModule } from './user/user.module';
@@ -19,7 +21,7 @@ import { UserModule } from './user/user.module';
     ConfigModule.forRoot({
       isGlobal: true, // 全局可用，其他模块无需再 import
       envFilePath: [`.env.${process.env.NODE_ENV ?? Environment.Development}`, '.env'],
-      load: [appConfig, authConfig, dataBaseConfig, seedsConfig],
+      load: [appConfig, authConfig, dataBaseConfig, redisConfig, seedsConfig],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -45,6 +47,8 @@ import { UserModule } from './user/user.module';
         };
       },
     }),
+    RedisModule,
+
     UserModule,
     RoleModule,
     AuthModule,

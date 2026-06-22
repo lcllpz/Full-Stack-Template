@@ -14,6 +14,7 @@ import { AuthConfigType } from '@/config/auth/config.type';
 import { AllConfigType } from '@/config/config.type';
 import { MenuType } from '@/menu/entities/menu.entity';
 import { MenuService, MenuTreeNode } from '@/menu/menu.service';
+import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 import { RoleService } from '@/role/role.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
@@ -30,6 +31,7 @@ export class UserService {
   constructor(
     private readonly menuService: MenuService,
     private readonly roleService: RoleService,
+    private readonly permissionMenuCacheService: PermissionMenuCacheService,
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
@@ -166,11 +168,18 @@ export class UserService {
     // ESLint 规则 @typescript-eslint/no-unused-vars 默认会忽略所有以 _ 开头的变量
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { roleIds: _roleIds, ...rest } = dto;
-    return this.userRepository.save({ ...user, ...rest });
+    const saved = await this.userRepository.save({ ...user, ...rest });
+
+    if (dto.roleIds !== undefined) {
+      await this.permissionMenuCacheService.invalidateUser(id);
+    }
+
+    return saved;
   }
 
   async remove(ids: string[]) {
     await this.userRepository.softDelete({ id: In(ids) });
+    await Promise.all(ids.map((userId) => this.permissionMenuCacheService.invalidateUser(userId)));
     return { deleted: ids.length };
   }
 
@@ -181,6 +190,12 @@ export class UserService {
    * 链路：User → user_roles → Role → role_menus → Menu(type=BUTTON) → code
    */
   async getPermissionCodes(userId: string): Promise<string[]> {
+    return this.permissionMenuCacheService.getPermissionCodes(userId, () =>
+      this.queryPermissionCodesFromDB(userId),
+    );
+  }
+
+  private async queryPermissionCodesFromDB(userId: string): Promise<string[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { roles: { menus: true } },
@@ -203,6 +218,12 @@ export class UserService {
    * 根据角色关联的菜单过滤，返回树结构
    */
   async getAccessibleMenuTree(userId: string): Promise<MenuTreeNode[]> {
+    return this.permissionMenuCacheService.getAccessibleMenuTree(userId, () =>
+      this.queryAccessibleMenuTreeFromDB(userId),
+    );
+  }
+
+  private async queryAccessibleMenuTreeFromDB(userId: string): Promise<MenuTreeNode[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { roles: { menus: true } },
