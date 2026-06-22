@@ -21,3 +21,7 @@ pnpm add --save @nestjs/config
 占用端口
 netstat -ano | findstr :4000
 taskkill /PID <上面看到的PID> /F
+
+限流
+@nestjs/throttler
+@nest-lab/throttler-storage-redis

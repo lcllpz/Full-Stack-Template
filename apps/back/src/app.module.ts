@@ -17,6 +17,7 @@ import { MenuModule } from './menu/menu.module';
 import { RedisModule } from './redis/redis.module';
 import { RoleModule } from './role/role.module';
 import { DatabaseModule } from './seeds/database.module';
+import { ThrottleModule } from './throttle/throttle.module';
 import { UserModule } from './user/user.module';
 
 @Module({
@@ -67,6 +68,7 @@ import { UserModule } from './user/user.module';
       },
     }),
     RedisModule,
+    ThrottleModule,
 
     UserModule,
     RoleModule,

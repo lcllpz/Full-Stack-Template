@@ -11,18 +11,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis | null = null;
   private enabled = false;
 
-  constructor(private readonly configService: ConfigService) {}
-
-  get isEnabled(): boolean {
-    return this.enabled && this.client !== null;
-  }
-
-  onModuleInit(): void {
+  constructor(private readonly configService: ConfigService) {
     const config = this.configService.getOrThrow<RedisConfigType>(redisConfigKey, { infer: true });
     this.enabled = config.REDIS_ENABLED;
 
     if (!this.enabled) {
-      this.logger.log('Redis 未启用（REDIS_ENABLED=false），权限缓存将直接查库');
       return;
     }
 
@@ -38,6 +31,24 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client.on('error', (error) => {
       this.logger.error(`Redis 连接异常: ${error.message}`);
     });
+  }
+
+  /** 供限流等模块复用同一 ioredis 连接；未启用或连接失败时为 null */
+  getClient(): Redis | null {
+    return this.client;
+  }
+
+  get isEnabled(): boolean {
+    return this.enabled && this.client !== null;
+  }
+
+  onModuleInit(): void {
+    if (!this.enabled) {
+      this.logger.log('Redis 未启用（REDIS_ENABLED=false），权限缓存将直接查库');
+      return;
+    }
+
+    if (!this.client) return;
 
     void this.client.connect().catch((error: Error) => {
       this.logger.error(`Redis 连接失败，将降级为直接查库: ${error.message}`);

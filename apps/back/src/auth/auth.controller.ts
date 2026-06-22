@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 
+import { THROTTLE_LIMIT_AUTH, THROTTLE_TTL_MS } from '@/throttle/throttle.constants';
 import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
 
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
@@ -15,6 +17,7 @@ export class AuthController {
   // 2. 创建用户：password 加盐加密存储到数据库
   // 3. 返回成功
   @Post('register')
+  @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
   register(@Body() registerDto: AuthRegisterLoginDto) {
     return this.authService.register(registerDto);
   }
@@ -26,6 +29,7 @@ export class AuthController {
   // 4. 生成 token 和 refreshToken
   // 4. 返回 token 和 refreshToken
   @Post('login')
+  @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
   login(@Body() loginDto: UserRegistrationFieldsDto) {
     return this.authService.login(loginDto);
   }
