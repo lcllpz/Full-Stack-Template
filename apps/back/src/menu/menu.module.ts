@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PermissionModule } from '@/permission/permission.module';
@@ -9,7 +9,11 @@ import { MenuController } from './menu.controller';
 import { MenuService } from './menu.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Menu]), PermissionMenuCacheModule, PermissionModule],
+  imports: [
+    TypeOrmModule.forFeature([Menu]),
+    PermissionMenuCacheModule,
+    forwardRef(() => PermissionModule),
+  ],
   controllers: [MenuController],
   providers: [MenuService],
   exports: [MenuService],

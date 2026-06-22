@@ -27,9 +27,8 @@ export const PERMISSIONS = {
   MENU_UPDATE: 'menu:update',
   MENU_DELETE: 'menu:delete',
 
-  // // 系统模块
-  // SYSTEM_CONFIG: 'system:config',
-  // SYSTEM_LOG: 'system:log',
+  // 系统模块
+  SYSTEM_LOG: 'system:log',
 } as const;
 
 export const menuList: Partial<Menu & { children?: Partial<Menu>[] }>[] = [
@@ -155,6 +154,25 @@ export const menuList: Partial<Menu & { children?: Partial<Menu>[] }>[] = [
         visible: false,
         isSystem: false,
         code: PERMISSIONS.MENU_DELETE,
+      },
+    ],
+  },
+  {
+    title: '系统管理',
+    path: '/system',
+    icon: 'setting',
+    type: MenuType.MENU,
+    parentId: null,
+    visible: true,
+    isSystem: false,
+    code: 'system:menu',
+    children: [
+      {
+        title: '操作日志',
+        type: MenuType.BUTTON,
+        visible: false,
+        isSystem: false,
+        code: PERMISSIONS.SYSTEM_LOG,
       },
     ],
   },

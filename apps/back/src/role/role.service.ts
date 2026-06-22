@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
+import { AuditService, sanitizeAuditSnapshot } from '@/audit/audit.service';
 import { Menu, MenuType } from '@/menu/entities/menu.entity';
+import { PERMISSIONS } from '@/permission/permission.constants';
 import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -20,7 +22,10 @@ export class RoleService {
   @InjectRepository(Menu)
   private readonly menuRepository: Repository<Menu>;
 
-  constructor(private readonly permissionMenuCacheService: PermissionMenuCacheService) {}
+  constructor(
+    private readonly permissionMenuCacheService: PermissionMenuCacheService,
+    private readonly auditService: AuditService,
+  ) {}
 
   // ─── 创建 ────────────────────────────────────────────────
 
@@ -35,7 +40,20 @@ export class RoleService {
       role.menus = await this.resolveMenusWithDescendants(dto.menuIds);
     }
 
-    return this.roleRepository.save(role);
+    const saved = await this.roleRepository.save(role);
+
+    this.auditService.log({
+      action: PERMISSIONS.ROLE_CREATE,
+      resourceId: saved.id,
+      detail: {
+        after: sanitizeAuditSnapshot({
+          ...saved,
+          menuIds: saved.menus?.map((m) => m.id) ?? [],
+        } as unknown as Record<string, unknown>),
+      },
+    });
+
+    return saved;
   }
 
   // ─── 查询 ────────────────────────────────────────────────
@@ -92,9 +110,14 @@ export class RoleService {
   // ─── 更新 ────────────────────────────────────────────────
 
   async update(id: string, dto: UpdateRoleDto): Promise<Role> {
-    console.log('dto', dto);
-    console.log('id', id);
     const role = await this.findOne(id);
+    const before = sanitizeAuditSnapshot({
+      id: role.id,
+      name: role.name,
+      description: role.description,
+      isSystem: role.isSystem,
+      menuIds: role.menus.map((m) => m.id),
+    } as unknown as Record<string, unknown>);
 
     if (dto.name !== undefined) role.name = dto.name;
     if (dto.description !== undefined) role.description = dto.description ?? null;
@@ -111,6 +134,21 @@ export class RoleService {
       await this.permissionMenuCacheService.invalidateByRoleId(id);
     }
 
+    this.auditService.log({
+      action: dto.menuIds !== undefined ? PERMISSIONS.ROLE_ASSIGN : PERMISSIONS.ROLE_UPDATE,
+      resourceId: id,
+      detail: {
+        before,
+        after: sanitizeAuditSnapshot({
+          id: saved.id,
+          name: saved.name,
+          description: saved.description,
+          isSystem: saved.isSystem,
+          menuIds: saved.menus?.map((m) => m.id) ?? [],
+        } as unknown as Record<string, unknown>),
+      },
+    });
+
     return saved;
   }
 
@@ -119,10 +157,29 @@ export class RoleService {
   async remove(dto: DeleteRoleDto) {
     if (!dto.ids?.length) return { deleted: 0 };
 
+    const roles = await this.roleRepository.findBy({ id: In(dto.ids) });
+
     await Promise.all(
       dto.ids.map((roleId) => this.permissionMenuCacheService.invalidateByRoleId(roleId)),
     );
     await this.roleRepository.softDelete({ id: In(dto.ids) });
+
+    this.auditService.log({
+      action: PERMISSIONS.ROLE_DELETE,
+      resourceId: dto.ids.length === 1 ? dto.ids[0] : null,
+      detail: {
+        ids: dto.ids,
+        before: roles.map((r) =>
+          sanitizeAuditSnapshot({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            isSystem: r.isSystem,
+          } as unknown as Record<string, unknown>),
+        ),
+      },
+    });
+
     return { deleted: dto.ids.length };
   }
 

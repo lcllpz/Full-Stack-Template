@@ -15,7 +15,7 @@ import { RoleService } from './role.service';
     TypeOrmModule.forFeature([Role, Menu]),
     PermissionMenuCacheModule,
     forwardRef(() => UserModule),
-    PermissionModule,
+    forwardRef(() => PermissionModule),
   ],
   controllers: [RoleController],
   providers: [RoleService],

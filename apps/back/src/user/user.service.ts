@@ -9,11 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { In, Repository } from 'typeorm';
 
+import { AuditService, sanitizeAuditSnapshot } from '@/audit/audit.service';
 import { authConfigKey } from '@/config/auth/config';
 import { AuthConfigType } from '@/config/auth/config.type';
 import { AllConfigType } from '@/config/config.type';
 import { MenuType } from '@/menu/entities/menu.entity';
 import { MenuService, MenuTreeNode } from '@/menu/menu.service';
+import { PERMISSIONS } from '@/permission/permission.constants';
 import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 import { RoleService } from '@/role/role.service';
 
@@ -33,6 +35,7 @@ export class UserService {
     private readonly roleService: RoleService,
     private readonly permissionMenuCacheService: PermissionMenuCacheService,
     private readonly configService: ConfigService<AllConfigType>,
+    private readonly auditService: AuditService,
   ) {}
 
   private get bcryptSaltRounds(): number {
@@ -64,7 +67,7 @@ export class UserService {
       ? await this.roleService.findByIds(createUserDto.roleIds)
       : [];
 
-    return await this.userRepository.save({
+    const saved = await this.userRepository.save({
       email,
       password,
       nickname: createUserDto.nickname || null,
@@ -72,6 +75,14 @@ export class UserService {
       avatar: createUserDto.avatar || null,
       roles,
     });
+
+    this.auditService.log({
+      action: PERMISSIONS.USER_CREATE,
+      resourceId: saved.id,
+      detail: { after: sanitizeAuditSnapshot(saved as unknown as Record<string, unknown>) },
+    });
+
+    return saved;
   }
 
   findByEmail(email: User['email']) {
@@ -145,6 +156,7 @@ export class UserService {
 
   async update(id: string, dto: UpdateUserDto) {
     const user = await this.findOne(id);
+    const before = sanitizeAuditSnapshot({ ...user } as unknown as Record<string, unknown>);
 
     if (dto.email && dto.email !== user.email) {
       const exists = await this.findByEmail(dto.email);
@@ -174,12 +186,32 @@ export class UserService {
       await this.permissionMenuCacheService.invalidateUser(id);
     }
 
+    this.auditService.log({
+      action: PERMISSIONS.USER_UPDATE,
+      resourceId: id,
+      detail: {
+        before,
+        after: sanitizeAuditSnapshot(saved as unknown as Record<string, unknown>),
+      },
+    });
+
     return saved;
   }
 
   async remove(ids: string[]) {
+    const users = await this.userRepository.findBy({ id: In(ids) });
     await this.userRepository.softDelete({ id: In(ids) });
     await Promise.all(ids.map((userId) => this.permissionMenuCacheService.invalidateUser(userId)));
+
+    this.auditService.log({
+      action: PERMISSIONS.USER_DELETE,
+      resourceId: ids.length === 1 ? ids[0] : null,
+      detail: {
+        ids,
+        before: users.map((u) => sanitizeAuditSnapshot(u as unknown as Record<string, unknown>)),
+      },
+    });
+
     return { deleted: ids.length };
   }
 

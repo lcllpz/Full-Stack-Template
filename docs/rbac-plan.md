@@ -687,6 +687,79 @@ export class AuditLog {
 
 > **建议**：审计日志只插入不更新不软删除，可在数据库层面对该表设置只读权限（应用账号仅有 INSERT + SELECT），防止被恶意修改。
 
+#### 已实现总结（2025-06）
+
+**文件结构：**
+
+```
+apps/back/src/audit/
+  ├── entities/audit-log.entity.ts   # audit_logs 表实体
+  ├── dto/query-audit-page.dto.ts    # 分页查询 DTO
+  ├── audit.constants.ts             # CLS 上下文键（userId / ip / userAgent）
+  ├── audit-context.interceptor.ts   # Guard 通过后写入操作人 userId
+  ├── audit.service.ts               # log() 异步写入 + searchPage() 分页查询
+  ├── audit.controller.ts            # GET /audit/page
+  ├── audit.module.ts                # @Global 全局模块
+  └── index.ts
+```
+
+**请求上下文传递（nestjs-cls）：**
+
+审计日志除业务字段外，还需要 `userId`、`ip`、`userAgent`，这些信息在 HTTP 层才有，但写入发生在 Service 层。若不用 CLS，每个 Service 方法都要额外传 `auditCtx` 参数，业务与 HTTP 细节耦合。
+
+| 阶段         | 组件                                      | 写入 CLS 的内容                             |
+| ------------ | ----------------------------------------- | ------------------------------------------- |
+| 请求进入     | `ClsModule` middleware（`app.module.ts`） | `ip`（支持 `x-forwarded-for`）、`userAgent` |
+| Guard 通过后 | `AuditContextInterceptor`                 | `userId`（来自 `req.user.userId`）          |
+| 写日志时     | `AuditService.log()`                      | `cls.get()` 读取上述三项                    |
+
+NestJS Service 默认是单例，不能在实例上存 `this.currentUserId`（并发请求会互相覆盖）。CLS 相当于「单例 Service + 请求级变量」，各请求互不干扰。
+
+**异步写入（不阻塞主业务流程）：**
+
+```typescript
+// AuditService.log() 返回 void，调用方不 await
+log(input: AuditLogInput): void {
+  // ...
+  void this.auditLogRepository.save(entry).catch((err) => {
+    console.error('[AuditLog] 写入失败:', err);
+  });
+}
+```
+
+含义：
+
+1. **`log()` 返回 `void`**：UserService / RoleService / MenuService 调用后立刻继续，不等 INSERT 完成
+2. **`void save(...)`**：发起数据库写入但不等待 Promise 结果（fire-and-forget）
+3. **`.catch()` 只打日志**：审计失败不影响主业务（删除用户已成功返回），属于 best-effort
+
+时间线：`softDelete 完成` → `auditService.log()` 被调用 → `return 响应` → （后台）INSERT audit_logs
+
+取舍：若合规要求「每条操作必须有审计记录」，应改为 `await`、消息队列或同事务；当前方案优先保证管理操作响应速度。
+
+**Service 层接入点：**
+
+| 模块 | 操作                                 | action                                        |
+| ---- | ------------------------------------ | --------------------------------------------- |
+| User | 创建 / 更新 / 删除                   | `user:create` / `user:update` / `user:delete` |
+| Role | 创建 / 更新 / 删除                   | `role:create` / `role:update` / `role:delete` |
+| Role | 分配菜单（`menuIds` 变更）           | `role:assign`                                 |
+| Menu | 创建 / 模块生成 / 更新 / 排序 / 删除 | `menu:create` / `menu:update` / `menu:delete` |
+
+- `detail` 含 `before` / `after` 快照，通过 `sanitizeAuditSnapshot()` 剔除 `password` 等敏感字段
+- 批量删除时 `resourceId` 可为 null，`detail.ids` 记录全部 ID
+- 未登录请求（如公开注册）无 `userId`，`log()` 自动跳过
+
+**查询接口：**
+
+```
+GET /audit/page?userId=&action=&resource=&resourceId=&startTime=&endTime=&page=&pageSize=
+```
+
+所需权限：`system:log`（`PERMISSIONS.SYSTEM_LOG`），种子菜单已新增「系统管理 → 操作日志」BUTTON 节点。
+
+**依赖：** `nestjs-cls`（请求上下文传递）
+
 ### 6.3 超级管理员豁免
 
 ```typescript
@@ -779,8 +852,8 @@ pnpm add @nestjs/throttler
 
 ### Phase 5 — 生产强化（预计 1 天）
 
-- [ ] Redis 权限缓存
-- [ ] 审计日志
+- [x] Redis 权限缓存
+- [x] 审计日志
 - [ ] 接口限流
 - [ ] 统一错误码
 
@@ -799,6 +872,7 @@ pnpm add @nestjs/throttler
 | PATCH  | `/menu/sort`       | 菜单排序                   | `menu:update` |
 | POST   | `/role/:id/menus`  | 为角色分配菜单             | `role:assign` |
 | GET    | `/role/:id/menus`  | 查询角色拥有的菜单         | `role:read`   |
+| GET    | `/audit/page`      | 操作审计日志分页查询       | `system:log`  |
 
 ---
 
@@ -825,9 +899,32 @@ pnpm add @nestjs/throttler
 
 Winston 无法支撑管理后台的「操作历史」功能，审计日志无法替代报错监控。两者都要。
 
+### Q2：为什么审计日志要用 nestjs-cls？
+
+审计是**横切关注点**：User / Role / Menu 多个 Service 都要写日志，但不应污染业务方法签名。
+
+不用 CLS 时，Controller 要从 `req` 取出 `userId`、`ip`、`userAgent`，再一层层传给 Service → AuditService。用 CLS 后，Service 只需：
+
+```typescript
+this.auditService.log({ action: PERMISSIONS.USER_DELETE, resourceId: id, detail: { ... } });
+// userId / ip / userAgent 由 AuditService 从 CLS 自动读取
+```
+
+CLS（Continuation Local Storage） = 给「当前这次 HTTP 请求」开一个独立存储区：
+
+请求 A 写入的 userId，只有请求 A 的代码能读到
+请求 B 并发进来，互不干扰
+nestjs-cls 是 NestJS 对 CLS 的封装，避免自己处理 AsyncLocalStorage。
+请求 A → 独立 CLS → log() → audit_logs 第 1 条
+请求 B → 独立 CLS → log() → audit_logs 第 2 条
+
+### Q3：「异步写入审计日志」是什么意思？
+
+主业务（如删除用户）完成后立刻返回响应，审计 INSERT 在后台执行，不增加接口等待时间。实现上 `log()` 返回 `void`，内部 `void repository.save(...).catch(...)` 不 await。审计失败只打 console.error，不回滚主业务。这是 best-effort 策略，与强一致审计（await / 消息队列）是不同取舍。
+
 ---
 
-### Q2：为什么要 Redis 权限缓存？
+### Q4：为什么要 Redis 权限缓存？
 
 权限数据是**高频读、极低频写**：每个鉴权接口都触发一次 `User → Roles → Menus(BUTTON)` 的多表 JOIN，Redis 将延迟从 5~20ms 降至 <1ms。
 
@@ -837,7 +934,7 @@ Winston 无法支撑管理后台的「操作历史」功能，审计日志无法
 
 ---
 
-### Q3：为什么要接口限流？
+### Q5：为什么要接口限流？
 
 RBAC 系统管理权限本身，一旦管理员账号被攻破，攻击者可给自己分配任意权限，危害远大于普通业务系统。限流重点防护：
 
@@ -851,7 +948,7 @@ RBAC 系统管理权限本身，一旦管理员账号被攻破，攻击者可给
 
 ---
 
-### Q4：为什么不单独建 permissions 表？
+### Q6：为什么不单独建 permissions 表？
 
 **原因：Menu 已经包含了权限信息。**
 
@@ -875,7 +972,7 @@ RBAC 系统管理权限本身，一旦管理员账号被攻破，攻击者可给
 
 ---
 
-### Q5：「内存缓存不适用于多实例」怎么理解？
+### Q7：「内存缓存不适用于多实例」怎么理解？
 
 **问题**：6.1 节提到「Node.js 进程内存缓存只在当前实例有效，实例 A 修改了角色，实例 B 的缓存不会失效，导致同一用户在不同实例上权限表现不一致」——这句话具体指什么？
 

@@ -2,6 +2,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
+import { AuditService, sanitizeAuditSnapshot } from '@/audit/audit.service';
+import { PERMISSIONS } from '@/permission/permission.constants';
 import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 
 import { CreateMenuDto } from './dto/create-menu.dto';
@@ -18,6 +20,7 @@ export class MenuService {
     @InjectRepository(Menu)
     private readonly menuRepo: Repository<Menu>,
     private readonly permissionMenuCacheService: PermissionMenuCacheService,
+    private readonly auditService: AuditService,
   ) {}
 
   // ─── 单条创建 ────────────────────────────────────────────────
@@ -40,7 +43,15 @@ export class MenuService {
     }
 
     const menu = this.menuRepo.create({ ...dto, type, parentId });
-    return this.menuRepo.save(menu);
+    const saved = await this.menuRepo.save(menu);
+
+    this.auditService.log({
+      action: PERMISSIONS.MENU_CREATE,
+      resourceId: saved.id,
+      detail: { after: sanitizeAuditSnapshot(saved as unknown as Record<string, unknown>) },
+    });
+
+    return saved;
   }
 
   // ─── 一键生成标准模块菜单树 ──────────────────────────────────
@@ -100,6 +111,16 @@ export class MenuService {
       ),
     );
 
+    this.auditService.log({
+      action: PERMISSIONS.MENU_CREATE,
+      resourceId: menuNode.id,
+      detail: {
+        module: dto.module,
+        menuId: menuNode.id,
+        buttonIds: buttons.map((b) => b.id),
+      },
+    });
+
     return { ...menuNode, children: buttons.map((b) => ({ ...b, children: [] })) };
   }
 
@@ -145,6 +166,7 @@ export class MenuService {
 
   async update(id: string, dto: UpdateMenuDto): Promise<Menu> {
     const menu = await this.findOne(id);
+    const before = sanitizeAuditSnapshot({ ...menu } as unknown as Record<string, unknown>);
 
     // BUTTON 类型：path 和 visible 不允许修改
     if (menu.type === MenuType.BUTTON) {
@@ -164,6 +186,16 @@ export class MenuService {
     Object.assign(menu, dto);
     const saved = await this.menuRepo.save(menu);
     await this.permissionMenuCacheService.invalidateByMenuId(id);
+
+    this.auditService.log({
+      action: PERMISSIONS.MENU_UPDATE,
+      resourceId: id,
+      detail: {
+        before,
+        after: sanitizeAuditSnapshot(saved as unknown as Record<string, unknown>),
+      },
+    });
+
     return saved;
   }
 
@@ -176,6 +208,12 @@ export class MenuService {
     await Promise.all(
       items.map(({ id }) => this.permissionMenuCacheService.invalidateByMenuId(id)),
     );
+
+    this.auditService.log({
+      action: PERMISSIONS.MENU_UPDATE,
+      resourceId: null,
+      detail: { sortChanges: items },
+    });
   }
 
   // ─── 删除 ────────────────────────────────────────────────────
@@ -185,6 +223,12 @@ export class MenuService {
     if (menu.isSystem) throw new ConflictException('系统内置菜单不允许删除');
     await this.permissionMenuCacheService.invalidateByMenuId(id);
     await this.menuRepo.softRemove(menu);
+
+    this.auditService.log({
+      action: PERMISSIONS.MENU_DELETE,
+      resourceId: id,
+      detail: { before: sanitizeAuditSnapshot(menu as unknown as Record<string, unknown>) },
+    });
   }
 
   // ─── 工具方法 ────────────────────────────────────────────────
