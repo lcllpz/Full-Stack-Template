@@ -20,8 +20,8 @@ import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 import { RoleService } from '@/role/role.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
-import { QueryPageDto } from './dto/query-page-dto';
-import { QueryUserListDto } from './dto/query-user-list-dto';
+import { QueryPageDto } from './dto/query-page.dto';
+import { QueryUserListDto } from './dto/query-user-list.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 

@@ -8,4 +8,7 @@ export enum Environment {
 export type AppConfig = {
   nodeEnv: Environment;
   port: number;
+  /** 非 production 默认 true，可通过 SWAGGER_ENABLED 覆盖 */
+  swaggerEnabled: boolean;
+  swaggerPath: string;
 };

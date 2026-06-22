@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@/permission/permission.constants';
 import { Permissions } from '@/permission/permissions.decorator';
 import { PermissionsGuard } from '@/permission/permissions.guard';
+import { SWAGGER_BEARER_AUTH } from '@/swagger/swagger.constants';
 
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
@@ -11,6 +13,8 @@ import { UpdateMenuDto } from './dto/update-menu.dto';
 import { MenuService } from './menu.service';
 
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@ApiBearerAuth(SWAGGER_BEARER_AUTH)
+@ApiTags('菜单')
 @Controller('menu')
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}

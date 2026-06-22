@@ -10,10 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@/permission/permission.constants';
 import { Permissions } from '@/permission/permissions.decorator';
 import { PermissionsGuard } from '@/permission/permissions.guard';
+import { SWAGGER_BEARER_AUTH } from '@/swagger/swagger.constants';
 
 import { CreateRoleDto } from './dto/create-role.dto';
 import { DeleteRoleDto } from './dto/delete-role.dto';
@@ -23,6 +25,8 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { RoleService } from './role.service';
 
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@ApiBearerAuth(SWAGGER_BEARER_AUTH)
+@ApiTags('角色')
 @Controller('role')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}

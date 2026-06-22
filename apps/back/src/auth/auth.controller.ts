@@ -1,13 +1,16 @@
 import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
+import { SWAGGER_BEARER_AUTH, SWAGGER_REFRESH_AUTH } from '@/swagger/swagger.constants';
 import { THROTTLE_LIMIT_AUTH, THROTTLE_TTL_MS } from '@/throttle/throttle.constants';
 import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
 
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
 import { AuthService } from './auth.service';
 
+@ApiTags('认证')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -40,6 +43,7 @@ export class AuthController {
   // 3. 更新session的hash并生成新的 token 和 refreshToken
   // 4. 返回新的 token 和 refreshToken
   @Post('refresh')
+  @ApiBearerAuth(SWAGGER_REFRESH_AUTH)
   @UseGuards(AuthGuard('jwtRefresh'))
   refresh(@Request() request) {
     const sessionId = request.user.sessionId;
@@ -52,6 +56,7 @@ export class AuthController {
 
   // 退出登录
   @Post('logout')
+  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
   @UseGuards(AuthGuard('jwt'))
   logout(@Request() request: Request & { user: { sessionId: string } }) {
     const sessionId = request.user.sessionId;
@@ -60,6 +65,7 @@ export class AuthController {
 
   // 获取当前用户信息 + 权限码 + 可见菜单树
   @Get('me')
+  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
   @UseGuards(AuthGuard('jwt'))
   getMe(@Request() request: Request & { user: { userId: string } }) {
     return this.authService.getMe(request.user.userId);
