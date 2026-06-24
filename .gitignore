@@ -13,6 +13,7 @@ dist-ssr/
 .output/
 .turbo/
 .cache/
+.firecrawl/
 
 # 覆盖率和测试产物
 # coverage/
