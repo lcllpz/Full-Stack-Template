@@ -7,10 +7,13 @@ import validationOptions from '@/utils/validate/validation-options';
 
 import { appConfigKey } from './config/app/config';
 import { AllConfigType } from './config/config.type';
+import { WinstonNestLoggerService } from './logger/winston-nest-logger.service';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(WinstonNestLoggerService));
+
   const configService = app.get(ConfigService<AllConfigType>);
 
   const { port } = configService.getOrThrow(appConfigKey, { infer: true });

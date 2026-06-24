@@ -1,5 +1,4 @@
 import { Exclude } from 'class-transformer';
-import { Role } from 'src/role/entities/role.entity';
 import {
   Column,
   CreateDateColumn,
@@ -10,6 +9,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { Role } from '@/role/entities/role.entity';
 
 export enum UserStatus {
   ACTIVE = 'active',

@@ -1,4 +1,3 @@
-import { User } from 'src/user/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -11,6 +10,7 @@ import {
 } from 'typeorm';
 
 import { Menu } from '@/menu/entities/menu.entity';
+import { User } from '@/user/entities/user.entity';
 
 @Entity('roles')
 export class Role {
