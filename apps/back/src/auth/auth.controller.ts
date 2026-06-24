@@ -1,18 +1,21 @@
 import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { SWAGGER_BEARER_AUTH, SWAGGER_REFRESH_AUTH } from '@/swagger/swagger.constants';
+import { SkipPermissions } from '@/permission/permissions.decorator';
+import { SWAGGER_REFRESH_AUTH } from '@/swagger/swagger.constants';
 import { THROTTLE_LIMIT_AUTH, THROTTLE_TTL_MS } from '@/throttle/throttle.constants';
 import { User } from '@/user/entities/user.entity';
 
 import { AuthLoginDto } from './dto/auth-login.dto';
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
+import { Public } from './guards/jwt-auth.guard';
+import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
 
 @ApiTags('认证')
+@SkipPermissions()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,6 +25,9 @@ export class AuthController {
   // 2. 创建用户：password 加盐加密存储到数据库
   // 3. 返回成功
   @Post('register')
+  @Public()
+  // 文档：Swagger UI 不要求 token
+  @ApiOperation({ security: [] })
   @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
   register(@Body() registerDto: AuthRegisterLoginDto) {
     return this.authService.register(registerDto);
@@ -33,6 +39,8 @@ export class AuthController {
   // 3. 生成 token 和 refreshToken
   // 4. 返回 token 和 refreshToken
   @Post('login')
+  @Public()
+  @ApiOperation({ security: [] })
   @ApiBody({ type: AuthLoginDto })
   @UseGuards(LocalAuthGuard)
   @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
@@ -46,8 +54,10 @@ export class AuthController {
   // 3. 更新session的hash并生成新的 token 和 refreshToken
   // 4. 返回新的 token 和 refreshToken
   @Post('refresh')
+  @Public()
   @ApiBearerAuth(SWAGGER_REFRESH_AUTH)
-  @UseGuards(AuthGuard('jwtRefresh'))
+  @ApiOperation({ security: [{ [SWAGGER_REFRESH_AUTH]: [] }] })
+  @UseGuards(JwtRefreshAuthGuard)
   refresh(@Request() request) {
     const sessionId = request.user.sessionId;
     const userId = request.user.userId;
@@ -59,8 +69,6 @@ export class AuthController {
 
   // 退出登录
   @Post('logout')
-  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
-  @UseGuards(AuthGuard('jwt'))
   logout(@Request() request: Request & { user: { sessionId: string } }) {
     const sessionId = request.user.sessionId;
     return this.authService.logout(sessionId);
@@ -68,8 +76,6 @@ export class AuthController {
 
   // 获取当前用户信息 + 权限码 + 可见菜单树
   @Get('me')
-  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
-  @UseGuards(AuthGuard('jwt'))
   getMe(@Request() request: Request & { user: { userId: string } }) {
     return this.authService.getMe(request.user.userId);
   }

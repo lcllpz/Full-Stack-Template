@@ -1,12 +1,13 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
+import { IS_PUBLIC_KEY } from '@/auth/guards/jwt-auth.guard';
 import { AllConfigType } from '@/config/config.type';
 import { seedsConfigKey } from '@/config/seeds/config';
 import { UserService } from '@/user/user.service';
 
-import { PERMISSIONS_KEY } from './permissions.decorator';
+import { PERMISSIONS_KEY, SKIP_PERMISSIONS_KEY } from './permissions.decorator';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -17,7 +18,19 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // 获取装饰器Permissions设置的值
+    const skipPermissions = this.reflector.getAllAndOverride<boolean>(SKIP_PERMISSIONS_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (skipPermissions) return true;
+
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
+    // 获取装饰器 Permissions 设置的值
     const requiredCodes = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -40,8 +53,11 @@ export class PermissionsGuard implements CanActivate {
 
     // 查询用户所有 BUTTON 类型菜单的 code 集合
     const userCodes = await this.userService.getPermissionCodes(user.userId);
-    return requiredCodes.every((code) => userCodes.includes(code));
-    // 403 表示「我知道你是谁，但你不允许做这件事」
-    // 401 表示「我不知道你是谁，或你的凭证无效」
+    const allowed = requiredCodes.every((code) => userCodes.includes(code));
+    if (!allowed) {
+      // 403 表示「我知道你是谁，但你不允许做这件事」
+      throw new ForbiddenException('权限不足，无法访问该资源');
+    }
+    return true;
   }
 }

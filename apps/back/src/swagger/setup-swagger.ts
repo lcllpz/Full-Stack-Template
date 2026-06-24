@@ -45,6 +45,8 @@ export function setupSwagger(
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  // 默认所有接口需要 access token；@Public 路由用 @ApiOperation({ security: [] }) 覆盖
+  document.security = [{ [SWAGGER_BEARER_AUTH]: [] }];
   SwaggerModule.setup(swaggerPath, app, document, {
     swaggerOptions: { persistAuthorization: true },
   });

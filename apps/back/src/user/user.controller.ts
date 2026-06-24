@@ -1,21 +1,8 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@/permission/permission.constants';
 import { Permissions } from '@/permission/permissions.decorator';
-import { PermissionsGuard } from '@/permission/permissions.guard';
-import { SWAGGER_BEARER_AUTH } from '@/swagger/swagger.constants';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteUserDto } from './dto/delete-user.dto';
@@ -24,12 +11,6 @@ import { QueryUserListDto } from './dto/query-user-list.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
-@ApiBearerAuth(SWAGGER_BEARER_AUTH)
-// 加了之后：
-// 接口旁会显示 小锁图标
-// 右上角出现 Authorize 按钮
-// 你在那里填一次 Token，后续「Try it out」会自动带上：
 @ApiTags('用户')
 @Controller('user')
 export class UserController {

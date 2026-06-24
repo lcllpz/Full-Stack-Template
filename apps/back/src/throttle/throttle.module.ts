@@ -1,7 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AllConfigType } from '@/config/config.type';
@@ -58,11 +57,7 @@ import { createThrottlerStorage } from './throttle-storage.factory';
       }),
     }),
   ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: AppThrottlerGuard,
-    },
-  ],
+  providers: [AppThrottlerGuard],
+  exports: [AppThrottlerGuard],
 })
 export class ThrottleModule {}
