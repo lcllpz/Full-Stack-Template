@@ -1,13 +1,15 @@
 import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { SWAGGER_BEARER_AUTH, SWAGGER_REFRESH_AUTH } from '@/swagger/swagger.constants';
 import { THROTTLE_LIMIT_AUTH, THROTTLE_TTL_MS } from '@/throttle/throttle.constants';
-import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
+import { User } from '@/user/entities/user.entity';
 
+import { AuthLoginDto } from './dto/auth-login.dto';
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
+import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
 
 @ApiTags('认证')
@@ -26,15 +28,16 @@ export class AuthController {
   }
 
   // 登录
-  // 1. 验证用户是否存在： 邮箱是否被注册
-  // 2. 验证用户密码是否正确： 密码是否与数据库中的密码匹配
-  // 3. 创建 session： 生成 sessionId 和 hash
-  // 4. 生成 token 和 refreshToken
+  // 1. LocalAuthGuard + LocalStrategy：验证邮箱与密码，写入 req.user
+  // 2. 创建 session： 生成 sessionId 和 hash
+  // 3. 生成 token 和 refreshToken
   // 4. 返回 token 和 refreshToken
   @Post('login')
+  @ApiBody({ type: AuthLoginDto })
+  @UseGuards(LocalAuthGuard)
   @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
-  login(@Body() loginDto: UserRegistrationFieldsDto) {
-    return this.authService.login(loginDto);
+  login(@Request() request: { user: Omit<User, 'password'> }) {
+    return this.authService.login(request.user);
   }
 
   // 刷新 token

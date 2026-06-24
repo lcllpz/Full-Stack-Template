@@ -8,7 +8,6 @@ import { authConfigKey } from '@/config/auth/config';
 import { AllConfigType } from '@/config/config.type';
 import { Session } from '@/session/entities/session.entity';
 import { SessionService } from '@/session/session.service';
-import { UserRegistrationFieldsDto } from '@/user/dto/user-registration-fields.dto';
 import { User } from '@/user/entities/user.entity';
 import { UserService } from '@/user/user.service';
 
@@ -33,8 +32,9 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: UserRegistrationFieldsDto) {
-    const user = await this.userService.findByEmail(loginDto.email);
+  /** LocalStrategy 校验凭证：查用户、比对密码，成功则返回不含 password 的用户 */
+  async validateUser(email: string, password: string): Promise<Omit<User, 'password'>> {
+    const user = await this.userService.findByEmail(email);
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -43,7 +43,7 @@ export class AuthService {
         },
       });
     }
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -52,7 +52,13 @@ export class AuthService {
         },
       });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 剥离 password 字段
+    const { password: _password, ...result } = user;
+    return result;
+  }
 
+  /** 凭证已通过 LocalStrategy 校验，创建 session 并签发 token */
+  async login(user: Omit<User, 'password'>) {
     const session = await this.sessionService.createForUser(user.id);
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       userId: user.id,
