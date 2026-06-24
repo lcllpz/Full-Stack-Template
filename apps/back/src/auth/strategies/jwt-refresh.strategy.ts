@@ -23,6 +23,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwtRefresh')
     });
   }
   async validate(payload: { hash: string; sessionId: string }) {
+    console.log('刷新token');
     // 1. 验证会话是否存在: sessionId、deletedAt
     // 2. 验证会话哈希是否匹配: hash
     // 3. 更新session的hash并生成新的 token 和 refreshToken

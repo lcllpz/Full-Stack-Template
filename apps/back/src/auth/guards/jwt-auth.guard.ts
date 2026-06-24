@@ -23,6 +23,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) {
       return true;
     }
+    console.log('jwt守卫验证');
     return super.canActivate(context);
   }
 

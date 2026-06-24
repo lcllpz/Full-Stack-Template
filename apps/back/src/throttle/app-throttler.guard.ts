@@ -8,6 +8,8 @@ export class AppThrottlerGuard extends ThrottlerGuard {
    * 未登录请求按客户端 IP 计数（兼容 x-forwarded-for）。
    */
   protected getTracker(req: Record<string, unknown>): Promise<string> {
+    console.log('接口节流验证');
+
     const user = req.user as { userId?: string } | undefined;
     if (user?.userId) {
       return Promise.resolve(user.userId);

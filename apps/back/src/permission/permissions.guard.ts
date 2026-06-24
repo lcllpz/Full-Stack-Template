@@ -29,6 +29,7 @@ export class PermissionsGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) return true;
+    console.log('权限、菜单守卫验证');
 
     // 获取装饰器 Permissions 设置的值
     const requiredCodes = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [

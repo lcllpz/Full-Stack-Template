@@ -18,7 +18,7 @@ const CONTEXT = 'Exception';
 interface ErrorResponseBody {
   statusCode: number;
   message: string | string[];
-  error?: string;
+  errors?: string;
   traceId?: string;
   timestamp: string;
   path: string;
@@ -40,18 +40,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const { statusCode, message, error } = this.normalize(exception);
+    const { statusCode, message, errors } = this.normalize(exception);
     const traceId = this.getTraceId();
 
     const body: ErrorResponseBody = {
       statusCode,
       message,
-      error,
+      errors,
       traceId,
       timestamp: new Date().toISOString(),
       path: request.originalUrl,
     };
-
     const logMeta = {
       context: CONTEXT,
       method: request.method,
@@ -74,26 +73,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private normalize(exception: unknown): {
     statusCode: number;
     message: string | string[];
-    error?: string;
+    errors?: string;
   } {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const res = exception.getResponse();
+
       if (typeof res === 'string') {
         return { statusCode: status, message: res };
       }
-      const obj = res as { message?: string | string[]; error?: string };
+      const obj = res as { message?: string | string[]; errors?: string };
       return {
         statusCode: status,
         message: obj.message ?? exception.message,
-        error: obj.error,
+        errors: obj.errors,
       };
     }
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: '服务器内部错误',
-      error: 'Internal Server Error',
+      errors: 'Internal Server Error',
     };
   }
 
