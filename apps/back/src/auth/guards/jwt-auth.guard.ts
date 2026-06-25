@@ -17,7 +17,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   canActivate(context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      // 提取当前正在处理的路由处理器对应的元数据
       context.getHandler(),
+      // 获取控制器层面应用元数据
       context.getClass(),
     ]);
     if (isPublic) {
