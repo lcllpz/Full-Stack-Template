@@ -37,6 +37,8 @@ import { UserModule } from './user/user.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // 全局可用，其他模块无需再 import
+      // 数组里会按顺序尝试加载，如果某个变量在多个文件中存在，则以第一个文件中的值为准。
+
       envFilePath: [`.env.${process.env.NODE_ENV ?? Environment.Development}`, '.env'],
       load: [appConfig, authConfig, dataBaseConfig, loggerConfig, redisConfig, seedsConfig],
     }),

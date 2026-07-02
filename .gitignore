@@ -31,6 +31,7 @@ logs/
 # lerna-debug.log*
 
 # 环境变量文件
+# 正式开发的时候建议不提交到git上
 # .env
 # .env.*
 # !.env.example

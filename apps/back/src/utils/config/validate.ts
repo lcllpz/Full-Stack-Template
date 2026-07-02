@@ -2,6 +2,7 @@ import { plainToClass } from 'class-transformer';
 import { ClassConstructor } from 'class-transformer/types/interfaces';
 import { validateSync } from 'class-validator';
 
+// 自定义配置验证函数
 function validateConfig<T extends object>(
   config: Record<string, unknown>,
   envVariablesClass: ClassConstructor<T>,
