@@ -20,6 +20,7 @@ import { PermissionMenuCacheService } from '@/redis/permissionMenuCache';
 import { RoleService } from '@/role/role.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { DeleteUserDto } from './dto/delete-user.dto';
 import { QueryPageDto } from './dto/query-page.dto';
 import { QueryUserListDto } from './dto/query-user-list.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -198,7 +199,7 @@ export class UserService {
     return saved;
   }
 
-  async remove(ids: string[]) {
+  async remove(ids: DeleteUserDto['ids']) {
     const users = await this.userRepository.findBy({ id: In(ids) });
     await this.userRepository.softDelete({ id: In(ids) });
     await Promise.all(ids.map((userId) => this.permissionMenuCacheService.invalidateUser(userId)));

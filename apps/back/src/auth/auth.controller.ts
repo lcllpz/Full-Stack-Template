@@ -7,8 +7,8 @@ import { SWAGGER_REFRESH_AUTH } from '@/swagger/swagger.constants';
 import { THROTTLE_LIMIT_AUTH, THROTTLE_TTL_MS } from '@/throttle/throttle.constants';
 import { User } from '@/user/entities/user.entity';
 
-import { AuthLoginDto } from './dto/auth-login.dto';
-import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
+import { EmailPasswordLoginDto } from './dto/email-password-login.dto';
+import { EmailPasswordRegisterDto } from './dto/email-password-register.dto';
 import { Public } from './guards/jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -29,7 +29,7 @@ export class AuthController {
   // 文档：Swagger UI 不要求 token
   @ApiOperation({ security: [] })
   @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
-  register(@Body() registerDto: AuthRegisterLoginDto) {
+  register(@Body() registerDto: EmailPasswordRegisterDto) {
     return this.authService.register(registerDto);
   }
 
@@ -41,7 +41,7 @@ export class AuthController {
   @Post('login')
   @Public()
   @ApiOperation({ security: [] })
-  @ApiBody({ type: AuthLoginDto })
+  @ApiBody({ type: EmailPasswordLoginDto })
   @UseGuards(LocalAuthGuard)
   @Throttle({ default: { limit: THROTTLE_LIMIT_AUTH, ttl: THROTTLE_TTL_MS } })
   login(@Request() request: { user: Omit<User, 'password'> }) {

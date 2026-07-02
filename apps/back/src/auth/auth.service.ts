@@ -11,7 +11,7 @@ import { SessionService } from '@/session/session.service';
 import { User } from '@/user/entities/user.entity';
 import { UserService } from '@/user/user.service';
 
-import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
+import { EmailPasswordRegisterDto } from './dto/email-password-register.dto';
 @Injectable()
 export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
@@ -24,7 +24,7 @@ export class AuthService {
   @Inject(ConfigService)
   private readonly configService: ConfigService<AllConfigType>;
 
-  async register(registerDto: AuthRegisterLoginDto) {
+  async register(registerDto: EmailPasswordRegisterDto) {
     await this.userService.create(registerDto);
     return {
       status: HttpStatus.CREATED,
