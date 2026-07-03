@@ -1,7 +1,7 @@
 import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { Observable, tap } from 'rxjs';
+import { map, Observable, tap } from 'rxjs';
 import { Logger } from 'winston';
 
 import { AllConfigType } from '@/config/config.type';
@@ -10,14 +10,23 @@ import { WINSTON_LOGGER } from '@/logger/logger.constants';
 
 const CONTEXT = 'HTTP';
 
+/** 成功响应统一 envelope（错误响应由 AllExceptionsFilter 处理） */
+export interface ApiEnvelope<T> {
+  code: number;
+  message: string;
+  data: T;
+}
+
 /**
- * HTTP 访问日志拦截器（管观察和记访问信息）：记录每个请求的 method/url/status/耗时/ip/userAgent/userId
+ * HTTP 响应拦截器：
+ * - 成功响应统一包装为 ApiEnvelope
+ * - 记录访问日志（method/url/status/耗时/ip/userAgent/userId）
  * - 慢请求（超过 LOG_SLOW_MS）以 warn 记录
  * - 出错请求也会补一条访问日志（错误详情由 AllExceptionsFilter 负责）
  */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly enabled: boolean;
+  private readonly logEnabled: boolean;
   private readonly slowMs: number;
 
   constructor(
@@ -25,17 +34,17 @@ export class LoggingInterceptor implements NestInterceptor {
     configService: ConfigService<AllConfigType>,
   ) {
     const config = configService.getOrThrow(loggerConfigKey, { infer: true });
-    this.enabled = config.LOG_HTTP_ENABLED;
+    this.logEnabled = config.LOG_HTTP_ENABLED;
     this.slowMs = config.LOG_SLOW_MS;
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    if (!this.enabled || context.getType() !== 'http') {
+    if (context.getType() !== 'http') {
       return next.handle();
     }
 
     const http = context.switchToHttp();
-    const req = http.getRequest<Request & { user?: { userId?: string } }>();
+    const req = http.getRequest<Request & { user?: { userId?: string; id?: string } }>();
     const res = http.getResponse<Response>();
 
     const { method, originalUrl } = req;
@@ -43,7 +52,11 @@ export class LoggingInterceptor implements NestInterceptor {
     const ip = req.ip ?? req.socket?.remoteAddress ?? '-';
     const start = Date.now();
 
-    const write = (errorStatus?: number) => {
+    const writeLog = (errorStatus?: number) => {
+      if (!this.logEnabled) {
+        return;
+      }
+
       const duration = Date.now() - start;
       const statusCode = errorStatus ?? res.statusCode;
       const message = `${method} ${originalUrl} ${statusCode} ${duration}ms`;
@@ -55,7 +68,8 @@ export class LoggingInterceptor implements NestInterceptor {
         durationMs: duration,
         ip,
         userAgent,
-        userId: req.user?.userId ?? null,
+        userInfo: req.user ?? null,
+        userInfoId: req.user?.userId || req.user?.id,
       };
 
       if (duration >= this.slowMs) {
@@ -66,13 +80,18 @@ export class LoggingInterceptor implements NestInterceptor {
     };
 
     return next.handle().pipe(
-      // 求成功完成时触发
+      map(
+        (data): ApiEnvelope<unknown> => ({
+          code: res.statusCode,
+          message: 'ok',
+          data,
+        }),
+      ),
       tap({
-        // 请求成功完成时触发，调用 write() 写日志
-        next: () => write(),
-        // 请求抛错时触发，用异常里的 status 写日志，默认 500
-        error: (err: { status?: number; statusCode?: number }) =>
-          write(err?.status ?? err?.statusCode ?? 500),
+        next: () => writeLog(),
+        error: (err: { status?: number; statusCode?: number }) => {
+          writeLog(err?.status ?? err?.statusCode ?? 500);
+        },
       }),
     );
   }
