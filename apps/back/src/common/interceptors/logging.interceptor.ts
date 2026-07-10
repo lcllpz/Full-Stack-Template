@@ -80,6 +80,7 @@ export class LoggingInterceptor implements NestInterceptor {
     };
 
     return next.handle().pipe(
+      // handle() 方法会返回一个Observable 对象。该数据流包含从路由处理程序返回 的值，因此我们可以轻松地使用 RxJS 的map() 操作符对其进行转换。
       map(
         (data): ApiEnvelope<unknown> => ({
           code: res.statusCode,
@@ -87,6 +88,7 @@ export class LoggingInterceptor implements NestInterceptor {
           data,
         }),
       ),
+      // 使用了tap()操作符——该操作符会在可观察流（observable stream）正常终止或异常终止时调用我们定义的匿名日志记录函数，但不会对响应周期产生其他干扰。
       tap({
         next: () => writeLog(),
         error: (err: { status?: number; statusCode?: number }) => {
