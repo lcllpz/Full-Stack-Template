@@ -4,6 +4,8 @@ import { authConfigKey } from './auth/config';
 import { AuthConfigType } from './auth/config.type';
 import { dataBaseConfigKey } from './dataBase/config';
 import { DataBaseConfigType } from './dataBase/config.type';
+import { fileStorageConfigKey } from './fileStorage/config';
+import { StorageConfigType } from './fileStorage/config.type';
 import { loggerConfigKey } from './logger/config';
 import { LoggerConfigType } from './logger/config.type';
 import { redisConfigKey } from './redis/config';
@@ -18,4 +20,5 @@ export type AllConfigType = {
   [loggerConfigKey]: LoggerConfigType;
   [redisConfigKey]: RedisConfigType;
   [seedsConfigKey]: SeedsConfigType;
+  [fileStorageConfigKey]: StorageConfigType;
 };

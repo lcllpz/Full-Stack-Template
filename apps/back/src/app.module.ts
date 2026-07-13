@@ -17,10 +17,12 @@ import { Environment } from './config/app/config.type';
 import { authConfig } from './config/auth/config';
 import { AllConfigType } from './config/config.type';
 import { dataBaseConfig, dataBaseConfigKey } from './config/dataBase/config';
+import { fileStorageConfig } from './config/fileStorage/config';
 import { loggerConfig } from './config/logger/config';
 import { LOG_CLS_TRACE_ID, TRACE_ID_HEADER } from './config/logger/constants';
 import { redisConfig } from './config/redis/config';
 import { seedsConfig } from './config/seeds';
+import { FileModule } from './file/file.module';
 import { HealthController } from './health/health.controller';
 import { LoggerModule } from './logger/logger.module';
 import { MenuModule } from './menu/menu.module';
@@ -40,7 +42,15 @@ import { UserModule } from './user/user.module';
       // 数组里会按顺序尝试加载，如果某个变量在多个文件中存在，则以第一个文件中的值为准。
 
       envFilePath: [`.env.${process.env.NODE_ENV ?? Environment.Development}`, '.env'],
-      load: [appConfig, authConfig, dataBaseConfig, loggerConfig, redisConfig, seedsConfig],
+      load: [
+        appConfig,
+        authConfig,
+        dataBaseConfig,
+        loggerConfig,
+        redisConfig,
+        seedsConfig,
+        fileStorageConfig,
+      ],
     }),
     LoggerModule.forRootAsync(),
     // nestjs-cls（基于 AsyncLocalStorage 的请求级上下文），在每个 HTTP 请求进入时自动写入一些「跟本次请求绑定」的信息，供日志、审计、异常处理等模块在同一次请求链路里读取。
@@ -105,6 +115,8 @@ import { UserModule } from './user/user.module';
     AuditModule,
 
     DatabaseModule,
+
+    FileModule,
   ],
   controllers: [HealthController],
   providers: [

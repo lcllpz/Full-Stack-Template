@@ -85,6 +85,10 @@ logs/
 # 后端本地数据导入文件体积通常较大，不提交到 Git。
 # server/data/
 
+# 后端本地上传文件由运行时生成，不提交到 Git。
+apps/back/uploads/
+uploads/
+
 # 数据库产物
 # server/generated/prisma/
 # server/libs/shared/src/generated/prisma/

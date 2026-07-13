@@ -1,4 +1,11 @@
-import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  NestInterceptor,
+  StreamableFile,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { map, Observable, tap } from 'rxjs';
@@ -10,7 +17,7 @@ import { WINSTON_LOGGER } from '@/logger/logger.constants';
 
 const CONTEXT = 'HTTP';
 
-/** 成功响应统一 envelope（错误响应由 AllExceptionsFilter 处理） */
+/** 成功响应统一 envelope（文件流除外，错误响应由 AllExceptionsFilter 处理） */
 export interface ApiEnvelope<T> {
   code: number;
   message: string;
@@ -19,7 +26,7 @@ export interface ApiEnvelope<T> {
 
 /**
  * HTTP 响应拦截器：
- * - 成功响应统一包装为 ApiEnvelope
+ * - 成功响应统一包装为 ApiEnvelope，StreamableFile 保持原始流响应
  * - 记录访问日志（method/url/status/耗时/ip/userAgent/userId）
  * - 慢请求（超过 LOG_SLOW_MS）以 warn 记录
  * - 出错请求也会补一条访问日志（错误详情由 AllExceptionsFilter 负责）
@@ -81,13 +88,16 @@ export class LoggingInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       // handle() 方法会返回一个Observable 对象。该数据流包含从路由处理程序返回 的值，因此我们可以轻松地使用 RxJS 的map() 操作符对其进行转换。
-      map(
-        (data): ApiEnvelope<unknown> => ({
+      map((data): ApiEnvelope<unknown> | StreamableFile => {
+        if (data instanceof StreamableFile) {
+          return data;
+        }
+        return {
           code: res.statusCode,
           message: 'ok',
           data,
-        }),
-      ),
+        };
+      }),
       // 使用了tap()操作符——该操作符会在可观察流（observable stream）正常终止或异常终止时调用我们定义的匿名日志记录函数，但不会对响应周期产生其他干扰。
       tap({
         next: () => writeLog(),

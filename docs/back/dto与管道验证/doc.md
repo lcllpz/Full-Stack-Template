@@ -376,11 +376,35 @@ code: string;
 
 ---
 
-## 11. 参考文档
+## 11. 排除属性
+
+假设我们想自动排除用户实体中的密码属性。我们按如下方式注解该实体：
+
+```js
+
+import { Exclude } from 'class-transformer';
+
+export class UserEntity {
+  id: number;
+  firstName: string;
+  lastName: string;
+
+  @Exclude()
+  password: string;
+
+  constructor(partial: Partial<UserEntity>) {
+    Object.assign(this, partial);
+  }
+}
+
+```
+
+## 12. 参考文档
 
 1. [NestJS — Validation（验证管道）](https://docs.nestjs.com/techniques/validation)
 2. [NestJS — Pipes（管道）](https://docs.nestjs.com/pipes)
 3. [class-validator 装饰器列表](https://github.com/typestack/class-validator#validation-decorators)
 4. [class-transformer](https://github.com/typestack/class-transformer)
+5. [serialization](https://docs.nestjs.com/techniques/serialization)
 
 ---
