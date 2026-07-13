@@ -10,6 +10,11 @@
 | `邮箱（账号）、密码登录注册功能/` | `邮箱密码登录.md` | 注册/登录/JWT/Session/守卫链 |
 | 同上 | `密码加密方案总结.md` | bcrypt 存储与校验 |
 | 同上 | `session-认证方案总结.md` | JWT + Session 表、hash 轮换 |
+| `日志/` | `日志记录.md` | Winston、traceId、访问/异常日志、Loki |
+| `日志/` | `审计日志.md` | AuditModule、CLS、异步落库、GET /audit/page |
+| `统一请求与异常响应/` | `doc.md` | ApiEnvelope、Filter、Interceptor |
+| `qps限流/` | `index.md` | Throttler、按用户/IP 限流 |
+| `seeds/` | `index.md` | 数据库种子与权限菜单初始化 |
 
 撰写新文档时，优先链接上表相关条目，而非重复守卫链、422 错误格式等共用知识。
 

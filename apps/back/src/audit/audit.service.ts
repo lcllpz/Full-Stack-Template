@@ -40,6 +40,7 @@ export class AuditService {
       ip: this.cls.get<string>(AUDIT_CLS_KEYS.ip) ?? null,
       userAgent: this.cls.get<string>(AUDIT_CLS_KEYS.userAgent) ?? null,
     });
+    console.log('entry', entry);
 
     void this.auditLogRepository.save(entry).catch((err: unknown) => {
       console.error('[AuditLog] 写入失败:', err);
