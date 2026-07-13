@@ -212,6 +212,7 @@ system:log
 - `LoggingInterceptor` 记录 HTTP 访问日志；慢请求（默认 > 1000ms）以 warn 级别记录
 - `AllExceptionsFilter` 统一错误响应体，响应与日志均携带 `traceId`
 - 开发环境默认仅控制台输出；生产环境默认写入 `logs/` 目录并按日切割
+- **远程采集（可选）**：本机 Loki 栈见仓库 [`deploy/observability/README.md`](../../deploy/observability/README.md)（文件 → Promtail → Loki → Grafana）
 
 ## Redis
 

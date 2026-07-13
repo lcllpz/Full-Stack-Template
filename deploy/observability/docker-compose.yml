@@ -1,0 +1,71 @@
+# 本机可观测栈：Nest 写文件 → Promtail → Loki → Grafana
+# 启动：docker compose -f deploy/observability/docker-compose.yml up -d
+# Grafana: http://localhost:3000  (admin / admin)
+# Loki:    http://localhost:3100/ready
+
+#  是 Docker Compose 的顶层字段，用来声明要跑哪些容器。
+services:
+  # ---------- 日志存储：接收 Promtail 推送，提供 LogQL 查询 ----------
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: fst-loki
+    # 指定配置文件（挂载见下方 volumes）
+    command: -config.file=/etc/loki/loki-config.yml
+    ports:
+      # 宿主机 3100 → 容器 3100（Grafana / 探针访问）
+      - '3100:3100'
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      # 命名卷持久化 chunks / index，down 后默认不删
+      - loki-data:/loki
+    restart: unless-stopped
+    # Loki 镜像无 shell/wget，不能用 CMD-SHELL；用内置 -health
+    healthcheck:
+      test: ['CMD', '/usr/bin/loki', '-health']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ---------- 采集 Agent：tail 宿主机日志文件，推送到 Loki ----------
+  promtail:
+    # Promtail 无 3.7.0 标签；3.5.x 为 Docker Hub 上仍可用的稳定线（与 Loki 3.x push API 兼容）
+    image: grafana/promtail:3.5.0
+    container_name: fst-promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      # 相对本 compose 文件：把宿主机 apps/back/logs 挂进容器只读
+      - ../../apps/back/logs:/var/log/back:ro
+    depends_on:
+      loki:
+        # 等 Loki 健康后再启动，避免推送失败
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------- 查询 UI：Explore 中选 Loki 用 LogQL 查日志 ----------
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: fst-grafana
+    ports:
+      - '3000:3000'
+    environment:
+      # 首次登录账号（仅本机开发用，勿用于生产）
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+    volumes:
+      # 预置数据源等 provisioning 配置
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # 持久化 Grafana 自身数据（仪表盘、偏好等）
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+# 命名卷：数据落在 Docker 管理目录，不随容器删除而清空（除非 down -v）
+volumes:
+  loki-data:
+  grafana-data:

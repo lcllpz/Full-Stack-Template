@@ -1,0 +1,40 @@
+# 采集 Nest 后端 Winston JSON 文件日志，推送到 Loki（应用零侵入）
+# 对应链路：apps/back/logs/*.log → 本 Agent → Loki
+
+# Promtail 自身 HTTP 端口（容器内，未对外映射）
+server:
+  http_listen_port: 9080
+  # 关闭 gRPC 监听（本机单机采集不需要）
+  grpc_listen_port: 0
+
+# 记录各文件已读到的偏移量，重启后从断点续传，避免重复/漏采
+positions:
+  filename: /tmp/positions.yaml
+
+# 推送目标：compose 网络内的 Loki 服务名
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: back
+    static_configs:
+      - targets:
+          # 静态采集必填占位，实际不连该地址
+          - localhost
+        labels:
+          # 查询时常用：{job="back"}
+          job: back
+          app: full-stack-template
+          # 宿主机 apps/back/logs 挂载到此目录（见 docker-compose.yml）
+          # 匹配 app-*.log / error-*.log / exceptions / rejections
+          __path__: /var/log/back/*.log
+    pipeline_stages:
+      # 解析 JSON 字段；整行原文保留，便于 Grafana 中 `| json | traceId="..."`
+      - json:
+          expressions:
+            level: level
+            service: service
+      # 仅将低基数字段提为标签；禁止把 traceId 打成标签（高基数会拖垮 Loki）
+      - labels:
+          level:
+          service:

@@ -1,0 +1,15 @@
+# Grafana 启动时自动加载的数据源（provisioning）
+# 生效路径由 compose 挂载：./grafana/provisioning → /etc/grafana/provisioning
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    # proxy：浏览器 → Grafana → Loki（推荐，无需浏览器直连 Loki）
+    access: proxy
+    # compose 网络内服务名；不要写成 localhost（那是 Grafana 容器自己）
+    url: http://loki:3100
+    # Explore 默认选中该数据源
+    isDefault: true
+    # 禁止在 UI 里改掉，避免与仓库配置漂移
+    editable: false

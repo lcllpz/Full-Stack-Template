@@ -13,6 +13,8 @@ export class AuditContextInterceptor implements NestInterceptor {
   constructor(private readonly cls: ClsService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    console.log('AuditContextInterceptor 审计日志');
+
     const req = context.switchToHttp().getRequest<{ user?: { userId?: string } }>();
     if (req.user?.userId) {
       this.cls.set(AUDIT_CLS_KEYS.userId, req.user.userId);
