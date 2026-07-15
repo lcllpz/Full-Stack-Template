@@ -24,7 +24,7 @@ import { DeleteUserDto } from './dto/delete-user.dto';
 import { QueryPageDto } from './dto/query-page.dto';
 import { QueryUserListDto } from './dto/query-user-list.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { User, UserStatus } from './entities/user.entity';
 
 @Injectable()
 export class UserService {
@@ -44,7 +44,15 @@ export class UserService {
       .BCRYPT_SALT_ROUNDS;
   }
 
-  async create(createUserDto: CreateUserDto) {
+  /**
+   * 创建用户。
+   * @param options 可选：注册流程需要显式指定 status/emailVerified（邮箱验证码校验通过后即激活）；
+   *                后台管理员建用户不传，走实体默认值（INACTIVE / 未验证）。
+   */
+  async create(
+    createUserDto: CreateUserDto,
+    options?: { status?: UserStatus; emailVerified?: boolean },
+  ) {
     let email = '';
     if (createUserDto.email) {
       const user = await this.findByEmail(createUserDto.email);
@@ -75,6 +83,9 @@ export class UserService {
       phone: createUserDto.phone || null,
       avatar: createUserDto.avatar || null,
       roles,
+      // 未显式传入时交由实体默认值处理
+      ...(options?.status !== undefined ? { status: options.status } : {}),
+      ...(options?.emailVerified !== undefined ? { emailVerified: options.emailVerified } : {}),
     });
 
     this.auditService.log({
@@ -88,6 +99,27 @@ export class UserService {
 
   findByEmail(email: User['email']) {
     return this.userRepository.findOne({ where: { email } });
+  }
+
+  findByPhone(phone: NonNullable<User['phone']>) {
+    return this.userRepository.findOne({ where: { phone } });
+  }
+
+  /** 重置/修改密码：哈希后更新（供忘记密码、验证码改密等场景复用） */
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
+    const salt = await bcrypt.genSalt(this.bcryptSaltRounds);
+    const hashed = await bcrypt.hash(newPassword, salt);
+    await this.userRepository.update(userId, { password: hashed });
+  }
+
+  /** 换绑邮箱成功后更新邮箱并标记已验证 */
+  async setEmail(userId: string, email: string): Promise<void> {
+    await this.userRepository.update(userId, { email, emailVerified: true });
+  }
+
+  /** 绑定/换绑手机成功后更新手机号并标记已验证 */
+  async setPhone(userId: string, phone: string): Promise<void> {
+    await this.userRepository.update(userId, { phone, phoneVerified: true });
   }
 
   searchList(query: QueryUserListDto) {

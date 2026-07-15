@@ -19,7 +19,8 @@
 
 ## 功能概览
 
-- **认证**：注册、登录、刷新 Token、退出、获取当前用户（含权限码与可见菜单树）
+- **认证**：邮箱注册（图形验证码 + 邮箱验证码两步）、密码登录、邮箱/手机验证码登录、刷新 Token、退出、获取当前用户（含权限码与可见菜单树）
+- **账号安全**：三渠道重置密码（旧密码 / 邮箱码 / 手机码）、绑定手机、换绑邮箱 / 手机（双重验证）
 - **RBAC**：用户 / 角色 / 菜单三级权限，按钮级权限码（`模块:操作`）
 - **菜单**：树形结构（目录 / 页面 / 按钮），支持一键生成标准模块菜单
 - **审计**：操作日志分页查询
@@ -31,24 +32,48 @@
 ```
 apps/back/
 ├── src/
-│   ├── auth/              # 认证（JWT / Refresh / Session）
+│   ├── auth/              # 认证（密码/验证码登录、注册、改密、绑定换绑、JWT/Refresh/Session）
 │   ├── user/              # 用户 CRUD
 │   ├── role/              # 角色 CRUD + 菜单绑定
 │   ├── menu/              # 菜单树管理
 │   ├── permission/        # 权限装饰器、Guard、权限码常量
 │   ├── audit/             # 操作审计
 │   ├── session/           # 登录会话
+│   ├── captcha/           # 图形验证码（SVG）
+│   ├── verification/      # 验证码生成/存储/校验/风控（Redis）
+│   ├── queue/             # BullMQ 队列与 processor（异步发信/发短信）
+│   ├── mail/              # 邮件发送（SMTP / dev 打印验证码）
+│   ├── sms/               # 短信发送（可插拔 provider，dev 用 mock）
+│   ├── file/              # 文件上传（头像等）
+│   ├── health/            # 健康检查
 │   ├── redis/             # Redis 连接与权限缓存
 │   ├── throttle/          # 全局限流
 │   ├── logger/            # Winston 日志
 │   ├── seeds/             # 数据库种子脚本
-│   ├── config/            # 分模块环境配置（app / auth / db / logger / redis / seeds）
+│   ├── config/            # 分模块环境配置（app/auth/dataBase/fileStorage/logger/mail/redis/seeds/sms/verification）
 │   ├── common/            # 全局 Filter、Interceptor
 │   ├── swagger/           # Swagger 初始化
-│   └── utils/             # 校验、类型工具
+│   ├── utils/             # 校验、类型工具
+│   ├── app.module.ts      # 根模块
+│   └── main.ts            # 应用入口（bootstrap）
+├── scripts/               # 辅助脚本
+│   └── auth-smoke.mjs     # 认证端到端冒烟测试
 ├── test/                  # E2E 测试
+│   ├── app.e2e-spec.ts
+│   ├── file-upload.e2e-spec.ts
+│   └── jest-e2e.json      # E2E Jest 配置
+├── dist/                  # 编译输出（构建时生成）
+├── uploads/               # 本地上传文件目录（运行时生成）
+├── logs/                  # 日志文件目录（运行时生成）
+├── node_modules/          # 依赖（安装时生成）
+├── .turbo/                # Turborepo 缓存（构建时生成）
+├── .env                   # 本地环境变量（不提交）
 ├── .env.example           # 环境变量模板
-└── logs/                  # 日志文件目录（运行时生成）
+├── nest-cli.json          # Nest CLI 配置
+├── package.json           # 包与脚本定义
+├── tsconfig.json          # TypeScript 配置（含 @/* 路径别名）
+├── tsconfig.build.json    # 构建用 TS 配置
+└── README.md              # 本文档
 ```
 
 路径别名：`@/*` → `src/*`（见 `tsconfig.json`）。

@@ -10,6 +10,7 @@ import { AUDIT_CLS_KEYS } from './audit/audit.constants';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { CaptchaModule } from './captcha/captcha.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { appConfig, appConfigKey } from './config/app/config';
@@ -20,14 +21,18 @@ import { dataBaseConfig, dataBaseConfigKey } from './config/dataBase/config';
 import { fileStorageConfig } from './config/fileStorage/config';
 import { loggerConfig } from './config/logger/config';
 import { LOG_CLS_TRACE_ID, TRACE_ID_HEADER } from './config/logger/constants';
+import { mailConfig } from './config/mail/config';
 import { redisConfig } from './config/redis/config';
 import { seedsConfig } from './config/seeds';
+import { smsConfig } from './config/sms/config';
+import { verificationConfig } from './config/verification/config';
 import { FileModule } from './file/file.module';
 import { HealthController } from './health/health.controller';
 import { LoggerModule } from './logger/logger.module';
 import { MenuModule } from './menu/menu.module';
 import { PermissionModule } from './permission/permission.module';
 import { PermissionsGuard } from './permission/permissions.guard';
+import { QueueModule } from './queue/queue.module';
 import { RedisModule } from './redis/redis.module';
 import { RoleModule } from './role/role.module';
 import { DatabaseModule } from './seeds/database.module';
@@ -50,6 +55,9 @@ import { UserModule } from './user/user.module';
         redisConfig,
         seedsConfig,
         fileStorageConfig,
+        mailConfig,
+        smsConfig,
+        verificationConfig,
       ],
     }),
     LoggerModule.forRootAsync(),
@@ -106,11 +114,13 @@ import { UserModule } from './user/user.module';
     }),
     RedisModule,
     ThrottleModule,
+    QueueModule,
 
     UserModule,
     RoleModule,
     PermissionModule,
     AuthModule,
+    CaptchaModule,
     MenuModule,
     AuditModule,
 

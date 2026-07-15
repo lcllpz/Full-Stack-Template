@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -35,6 +41,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   /** 供限流等模块复用同一 ioredis 连接；未启用或连接失败时为 null */
   getClient(): Redis | null {
+    return this.client;
+  }
+
+  /**
+   * 供「强依赖 Redis」的功能（图形验证码、短信/邮件验证码）获取原始客户端。
+   * 这些功能不能像权限缓存那样降级查库——若 Redis 不可用直接抛 503，
+   * 避免验证码校验被绕过带来的安全风险。
+   */
+  getClientOrThrow(): Redis {
+    if (!this.isEnabled || !this.client) {
+      throw new ServiceUnavailableException('验证码服务不可用：Redis 未启用或连接失败');
+    }
     return this.client;
   }
 

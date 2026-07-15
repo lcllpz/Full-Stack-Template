@@ -1,0 +1,13 @@
+services:
+  maildev:
+    image: maildev/maildev
+    container_name: maildev
+    ports:
+      - '1025:1025' # SMTP
+      - '1080:1080' # Web UI
+    restart: unless-stopped
+# docker run -d --name maildev -p 1080:1080 -p 1025:1025 maildev/maildev
+# docker start maildev    # 开机后再开
+# docker stop maildev
+# docker logs -f maildev
+# docker rm -f maildev    # 删容器

@@ -45,6 +45,10 @@ class EnvironmentVariablesValidator {
   @Min(60)
   @IsOptional()
   REDIS_PERMISSION_CACHE_TTL_SECONDS: number;
+
+  @IsString()
+  @IsOptional()
+  QUEUE_PREFIX: string;
 }
 
 export const redisConfigKey = 'redis';
@@ -67,5 +71,6 @@ export const redisConfig = registerAs<RedisConfigType>(redisConfigKey, () => {
     PERMISSION_CACHE_TTL_SECONDS: process.env[ENV_PERMISSION_CACHE_TTL_SECONDS]
       ? parseInt(process.env[ENV_PERMISSION_CACHE_TTL_SECONDS], 10)
       : undefined,
+    QUEUE_PREFIX: process.env.QUEUE_PREFIX?.trim() || 'queue',
   };
 });

@@ -8,10 +8,16 @@ import { fileStorageConfigKey } from './fileStorage/config';
 import { StorageConfigType } from './fileStorage/config.type';
 import { loggerConfigKey } from './logger/config';
 import { LoggerConfigType } from './logger/config.type';
+import { mailConfigKey } from './mail/config';
+import { MailConfigType } from './mail/config.type';
 import { redisConfigKey } from './redis/config';
 import { RedisConfigType } from './redis/config.type';
 import { seedsConfigKey } from './seeds/config';
 import { SeedsConfigType } from './seeds/config.type';
+import { smsConfigKey } from './sms/config';
+import { SmsConfigType } from './sms/config.type';
+import { verificationConfigKey } from './verification/config';
+import { VerificationConfigType } from './verification/config.type';
 
 export type AllConfigType = {
   [appConfigKey]: AppConfig;
@@ -21,4 +27,7 @@ export type AllConfigType = {
   [redisConfigKey]: RedisConfigType;
   [seedsConfigKey]: SeedsConfigType;
   [fileStorageConfigKey]: StorageConfigType;
+  [mailConfigKey]: MailConfigType;
+  [smsConfigKey]: SmsConfigType;
+  [verificationConfigKey]: VerificationConfigType;
 };
